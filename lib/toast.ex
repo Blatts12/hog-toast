@@ -61,11 +61,13 @@ defmodule HogToast.Toast do
       id={cid(@group_name, @toast.id)}
       class={@styles[:toast][:class]}
       style={@styles[:toast][:style]}
+      role={toast_role(@config, @toast.kind)}
     >
       <button
         $click={action: :hog_remove_toast, target: ToastGroup.cid(@group_name), params: %{id: @toast.id}}
         class={@styles[:close_button][:class]}
         style={@styles[:close_button][:style]}
+        aria-label={close_button_label(@toast)}
       >
         <Icons.Close
           class={@styles[:icon][:class]}
@@ -94,9 +96,24 @@ defmodule HogToast.Toast do
   @spec cid(name :: String.t(), id :: toast_id()) :: term()
   def cid(group_name, id), do: "hog-toast-#{group_name}-#{id}"
 
+  defp close_button_label(toast) do
+    if toast.title do
+      "Dismiss #{toast.title}"
+    else
+      "Dismiss notification"
+    end
+  end
+
   defp duration?(toast) do
     duration = Map.get(toast, :duration)
     is_integer(duration) and duration > 0
+  end
+
+  defp toast_role(config, kind) do
+    kinds = Map.get(config, :kinds, %{})
+    kind = Helpers.get_proper_kind(kinds, kind)
+
+    get_in(kinds, [kind, :role]) || "status"
   end
 
   @type toast_id() :: String.t()

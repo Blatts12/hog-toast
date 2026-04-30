@@ -18,7 +18,7 @@ defmodule HogToast.Config do
               default: %{},
               info: %{class: "hog-toast-info"},
               warning: %{class: "hog-toast-warning"},
-              danger: %{class: "hog-toast-danger"},
+              danger: %{class: "hog-toast-danger", role: "alert"},
               success: %{class: "hog-toast-success"}
             }
 
@@ -46,7 +46,8 @@ defmodule HogToast.Config do
            optional(:title) => part(),
            optional(:body) => part(),
            optional(:duration_bar) => part(),
-           optional(:close_button) => close_button()
+           optional(:close_button) => close_button(),
+           optional(:role) => String.t()
          }
 
   @typep kinds() :: %{

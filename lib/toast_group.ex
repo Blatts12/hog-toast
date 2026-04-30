@@ -33,7 +33,16 @@ defmodule HogToast.ToastGroup do
   @impl true
   def template do
     ~HOLO"""
-    <div id={cid(@name)} class={@config.group[:class]} style={@config.group[:style]}>
+    <div
+      id={cid(@name)}
+      class={@config.group[:class]}
+      style={@config.group[:style]}
+      role="region"
+      aria-label="Notifications"
+      aria-live="polite"
+      aria-atomic="false"
+      aria-relevant="additions"
+    >
       {%for toast <- @toasts}
         <Toast
           cid={Toast.cid(@name, toast.id)}

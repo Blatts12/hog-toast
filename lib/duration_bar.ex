@@ -16,6 +16,7 @@ defmodule HogToast.DurationBar do
       id={bar_id(@group_name, @toast.id)}
       class={@styles[:duration_bar][:class]}
       style={@styles[:duration_bar][:style]}
+      aria-hidden="true"
     />
     """
   end

@@ -48,7 +48,8 @@ defmodule HogToast.Helpers do
     }
   end
 
-  defp get_proper_kind(kinds, kind) do
+  @spec get_proper_kind(map(), atom()) :: atom()
+  def get_proper_kind(kinds, kind) do
     if Map.has_key?(kinds, kind),
       do: kind,
       else: kinds |> Map.keys() |> List.first()
