@@ -9,6 +9,7 @@ defmodule HogToast.Toast do
   alias HogToast.Icons
   alias HogToast.ToastGroup
 
+  prop :index, :integer, default: nil
   prop :toast, :map
   prop :group_name, :string
   prop :config, :map
@@ -62,6 +63,7 @@ defmodule HogToast.Toast do
       class={@styles[:toast][:class]}
       style={@styles[:toast][:style]}
       role={toast_role(@config, @toast.kind)}
+      data-idx={@index}
     >
       <button
         $click={action: :hog_remove_toast, target: ToastGroup.cid(@group_name), params: %{id: @toast.id}}

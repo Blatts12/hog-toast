@@ -36,7 +36,10 @@ defmodule HogToast.Helpers do
           {toast, Map.get(kinds, kind, %{})}
 
         :icon ->
-          {get_in(toast, [:close_button, :icon]) || %{}, get_in(kinds, [kind, :close_button, :icon]) || %{}}
+          {
+            get_in(toast, [:close_button, :icon]) || %{},
+            get_in(kinds, [kind, :close_button, :icon]) || %{}
+          }
 
         key ->
           {Map.get(toast, key, %{}), get_in(kinds, [kind, key]) || %{}}
