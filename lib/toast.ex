@@ -1,5 +1,24 @@
 defmodule HogToast.Toast do
-  @moduledoc false
+  @moduledoc """
+  Hologram component that renders a single toast notification.
+
+  Handles the full lifecycle of an individual toast: initialising resolved
+  styles, scheduling the countdown animation via `setup_toast_duration`, and
+  managing pause/resume state when the user hovers over the toast.
+
+  Use `create_toast/4` to build a toast map, then hand it to
+  `HogToast.ToastGroup.add_toast/3` (or the scoped helpers injected by
+  `HogToast.ToastHelpers`) to display it.
+
+  ## Stacking index
+
+  Each toast receives a zero-based `index` prop from `ToastGroup` (0 = newest).
+  The value is exposed both as `data-idx` and as the CSS custom property
+  `--idx` on the root element, so you can drive stacking animations purely in
+  CSS:
+
+      .hog-toast { transform: translateY(calc(var(--idx) * 0.5rem)); }
+  """
 
   use Hologram.Component
   use Hologram.JS

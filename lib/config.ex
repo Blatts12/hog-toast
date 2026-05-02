@@ -1,5 +1,22 @@
 defmodule HogToast.Config do
-  @moduledoc false
+  @moduledoc """
+  Configuration struct for `HogToast.ToastGroup`.
+
+  Defines default CSS classes and per-kind overrides for every visual part of a
+  toast (group wrapper, toast container, title, body, duration bar, close button,
+  and its icon).  Call `new!/1` with a partial map to deep-merge your overrides
+  on top of the built-in defaults.
+
+  ## Built-in kinds
+
+  | Kind      | Extra class            | ARIA role |
+  |-----------|------------------------|-----------|
+  | `:default`| —                      | `"status"` |
+  | `:info`   | `hog-toast-info`       | `"status"` |
+  | `:warning`| `hog-toast-warning`    | `"status"` |
+  | `:danger` | `hog-toast-danger`     | `"alert"`  |
+  | `:success`| `hog-toast-success`    | `"status"` |
+  """
 
   alias HogToast.Helpers
 

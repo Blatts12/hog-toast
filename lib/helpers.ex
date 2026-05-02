@@ -1,5 +1,10 @@
 defmodule HogToast.Helpers do
-  @moduledoc false
+  @moduledoc """
+  Internal utility functions shared across HogToast modules.
+
+  Provides deep map merging, style/class resolution per toast kind, and
+  CSS class/style string parsing used during component rendering.
+  """
 
   alias HogToast.Config
 

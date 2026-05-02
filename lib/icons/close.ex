@@ -1,10 +1,14 @@
 defmodule HogToast.Icons.Close do
-  @moduledoc false
+  @moduledoc """
+  Hologram component that renders the close-button SVG icon.
+
+  Tabler Icons "X" icon (MIT License — https://tabler.io/icons).
+  Accepts optional `class` and `style` props for custom styling.  The SVG is
+  marked `aria-hidden="true"` because the parent `<button>` carries the
+  accessible label.
+  """
 
   use Hologram.Component
-
-  # https://tabler.io/icons
-  # MIT License
 
   prop :class, :string, default: nil
   prop :style, :string, default: nil

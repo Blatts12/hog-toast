@@ -1,5 +1,23 @@
 defmodule HogToast.ToastGroup do
-  @moduledoc false
+  @moduledoc """
+  Hologram component that renders and manages a named group of toast notifications.
+
+  Place `<ToastGroup name="my-group" />` in your layout or page template.
+  Toasts are stacked in insertion order (newest first) and each one is rendered
+  as a `HogToast.Toast` child component.
+
+  ## Props
+
+  - `name` — unique string identifier for this group; must match the `name`
+    passed to `HogToast.ToastHelpers`.
+  - `config` — optional `HogToast.Config` struct for custom styling.
+  - `toasts` — optional initial list of toast maps (defaults to `[]`).
+
+  ## Actions
+
+  - `:hog_add_toast` — adds a toast map to the front of the list.
+  - `:hog_remove_toast` — removes a toast by its `id`.
+  """
 
   use Hologram.Component
 
@@ -43,6 +61,7 @@ defmodule HogToast.ToastGroup do
       aria-atomic="false"
       aria-relevant="additions"
     >
+      <slot />
       {%for {toast, index} <- @toasts |> Enum.reverse() |> Enum.with_index()}
         <Toast
           cid={Toast.cid(@name, toast.id)}
