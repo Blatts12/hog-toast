@@ -85,9 +85,9 @@ Each kind accepts a `role` key that sets the ARIA `role` on the toast element (d
 
 ```elixir
 kinds: %{
-  danger:   %{class: "bg-danger-800",  role: "alert"},
-  critical: %{class: "bg-red-950",     role: "alert"},
-  info:     %{class: "bg-info-800"}   # role defaults to "status"
+  danger: %{class: "bg-danger-800", role: "alert"},
+  critical: %{class: "bg-red-950", role: "alert"},
+  info: %{class: "bg-info-800"} # role defaults to "status"
 }
 ```
 
