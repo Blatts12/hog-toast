@@ -43,7 +43,7 @@ defmodule HogToast.ToastGroup do
       aria-atomic="false"
       aria-relevant="additions"
     >
-      {%for {toast, index} <- Enum.with_index(@toasts)}
+      {%for {toast, index} <- @toasts |> Enum.reverse() |> Enum.with_index()}
         <Toast
           cid={Toast.cid(@name, toast.id)}
           index={index}

@@ -79,7 +79,8 @@ defmodule HogToast.Helpers do
 
   defp parse_classes(_), do: nil
 
-  defp parse_styles(styles) do
+  @spec parse_styles([term()]) :: String.t() | nil
+  def parse_styles(styles) do
     styles
     |> Enum.reject(&falsy?/1)
     |> case do

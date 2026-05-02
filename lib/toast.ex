@@ -16,37 +16,45 @@ defmodule HogToast.Toast do
 
   def init(props, component) do
     styles = Helpers.resolve_styles(props.config, props.toast.kind)
-    component = put_state(component, :styles, styles)
+
+    component =
+      component
+      |> put_state(:styles, styles)
+      |> put_state(:toast, props.toast)
+      |> put_state(:group_name, props.group_name)
+      |> put_state(:pause_duration_left, nil)
 
     if duration?(props.toast) do
-      put_action(
-        component,
-        :setup_toast_duration,
-        toast: props.toast,
-        group_name: props.group_name
-      )
+      put_action(component, :setup_toast_duration)
     else
       component
     end
   end
 
-  def action(:setup_toast_duration, %{toast: toast, group_name: group_name}, component) do
+  def action(:setup_toast_duration, _, component) do
+    toast = component.state.toast
+    group_name = component.state.group_name
+
     bar_id = DurationBar.bar_id(group_name, toast.id)
     group_cid = ToastGroup.cid(group_name)
+    toast_cid = cid(group_name, toast.id)
 
     JS.exec("""
     function tick() {
+      const toast = document.getElementById("#{toast_cid}");
+      if (!toast || toast.dataset.paused) return;
       const bar = document.getElementById("#{bar_id}");
-      if (!bar) return;
       const elapsed = Date.now() - #{toast.start};
       if (elapsed >= #{toast.duration}) {
-        bar.style.width = "0%";
+        if (bar) bar.style.width = "0%";
         Hologram.dispatchAction("hog_remove_toast", "#{group_cid}", {id: "#{toast.id}"});
         return;
       }
 
-      const fraction = Math.max(0, 1 - elapsed / #{toast.duration});
-      bar.style.width = `${fraction * 100}%`;
+      if (bar) {
+        const fraction = Math.max(0, 1 - elapsed / #{toast.duration});
+        bar.style.width = `${fraction * 100}%`;
+      }
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
@@ -55,15 +63,38 @@ defmodule HogToast.Toast do
     component
   end
 
+  def action(:pause, _, component) do
+    now = now_unix()
+    duration_left = component.state.toast.start + component.state.toast.duration - now
+
+    put_state(component, :pause_duration_left, duration_left)
+  end
+
+  def action(:resume, _, component) do
+    toast = component.state.toast
+    duration_left = component.state.pause_duration_left
+    start = now_unix() - (toast.duration - duration_left)
+
+    toast = Map.put(toast, :start, start)
+
+    component
+    |> put_state(:pause_duration_left, nil)
+    |> put_state(:toast, toast)
+    |> put_action(:setup_toast_duration)
+  end
+
   @impl true
   def template do
     ~HOLO"""
     <div
       id={cid(@group_name, @toast.id)}
       class={@styles[:toast][:class]}
-      style={@styles[:toast][:style]}
+      style={Helpers.parse_styles(["--idx:#{@index}", @styles[:toast][:style]])}
       role={toast_role(@config, @toast.kind)}
       data-idx={@index}
+      data-paused={is_integer(@pause_duration_left) and @pause_duration_left > 0}
+      onmouseenter={"Hologram.dispatchAction('pause', '#{cid(@group_name, @toast.id)}')"}
+      onmouseleave={"Hologram.dispatchAction('resume', '#{cid(@group_name, @toast.id)}')"}
     >
       <button
         $click={action: :hog_remove_toast, target: ToastGroup.cid(@group_name), params: %{id: @toast.id}}
