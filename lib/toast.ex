@@ -40,18 +40,20 @@ defmodule HogToast.Toast do
     toast_cid = cid(group_name, toast.id)
 
     JS.exec("""
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     function tick() {
       const toast = document.getElementById("#{toast_cid}");
       if (!toast || toast.dataset.paused) return;
       const bar = document.getElementById("#{bar_id}");
       const elapsed = Date.now() - #{toast.start};
       if (elapsed >= #{toast.duration}) {
-        if (bar) bar.style.width = "0%";
+        if (bar && !reducedMotion) bar.style.width = "0%";
         Hologram.dispatchAction("hog_remove_toast", "#{group_cid}", {id: "#{toast.id}"});
         return;
       }
 
-      if (bar) {
+      if (bar && !reducedMotion) {
         const fraction = Math.max(0, 1 - elapsed / #{toast.duration});
         bar.style.width = `${fraction * 100}%`;
       }
