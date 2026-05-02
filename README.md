@@ -95,21 +95,21 @@ kinds: %{
 
 ### Default class names
 
-`HogToast.ToastGroup` ships with a default `%Config{}` that applies BEM-style class names to every element — no styles are included, giving you full control:
+`HogToast.ToastGroup` ships with a default `%Config{}` that applies class names to every element — no styles are included, giving you full control:
 
-| Element            | Default class                  |
-|--------------------|-------------------------------|
-| Group container    | `hog-toast-group`             |
-| Toast              | `hog-toast`                   |
-| Toast title        | `hog-toast-title`             |
-| Toast body         | `hog-toast-body`              |
-| Duration bar       | `hog-toast-duration-bar`      |
-| Close button       | `hog-toast-close-button`      |
-| Close button icon  | `hog-toast-close-button-icon` |
-| Info kind          | `hog-toast-info`              |
-| Success kind       | `hog-toast-success`           |
-| Warning kind       | `hog-toast-warning`           |
-| Danger kind        | `hog-toast-danger`            |
+| Element           | Default class                 |
+| ----------------- | ----------------------------- |
+| Group container   | `hog-toast-group`             |
+| Toast             | `hog-toast`                   |
+| Toast title       | `hog-toast-title`             |
+| Toast body        | `hog-toast-body`              |
+| Duration bar      | `hog-toast-duration-bar`      |
+| Close button      | `hog-toast-close-button`      |
+| Close button icon | `hog-toast-close-button-icon` |
+| Info kind         | `hog-toast-info`              |
+| Success kind      | `hog-toast-success`           |
+| Warning kind      | `hog-toast-warning`           |
+| Danger kind       | `hog-toast-danger`            |
 
 You can target these in your own stylesheet, or use the slot to inject a scoped style block (see below).
 
@@ -137,11 +137,11 @@ defp toast_group_config do
       }
     },
     kinds: %{
-      default: %{class: "bg-primary-800 ring-primary-500"},
-      success: %{class: "bg-success-800 ring-success-500"},
-      warning: %{class: "bg-warning-800 ring-warning-500"},
-      danger: %{class: "bg-danger-800 ring-danger-500"},
-      info: %{class: "bg-info-800 ring-info-500"}
+      default: %{class: "bg-purple-800 ring-purple-500"},
+      success: %{class: "bg-emerald-800 ring-emerald-500"},
+      warning: %{class: "bg-amber-800 ring-amber-500"},
+      danger: %{class: "bg-rose-800 ring-rose-500"},
+      info: %{class: "bg-blue-800 ring-blue-500"}
     }
   })
 end
@@ -167,7 +167,7 @@ HogToast.Config.new!(%{
 
 ```elixir
 <HogToast.ToastGroup name="main">
-  <style>
+  <style scope>{%raw}
     .hog-toast-group {
       position: fixed;
       bottom: 0.5rem;
@@ -224,9 +224,9 @@ HogToast.Config.new!(%{
 
     .hog-toast-info    { background-color: hsl(220 100% 35%); outline-color: hsl(220 100% 60%); }
     .hog-toast-success { background-color: hsl(120 100% 25%); outline-color: hsl(120 100% 45%); }
-    .hog-toast-warning { background-color: hsl(40  100% 30%); outline-color: hsl(40  100% 55%); }
-    .hog-toast-danger  { background-color: hsl(10  100% 35%); outline-color: hsl(10  100% 60%); }
-  </style>
+    .hog-toast-warning { background-color: hsl(40 100% 30%); outline-color: hsl(40 100% 55%); }
+    .hog-toast-danger  { background-color: hsl(10 100% 35%); outline-color: hsl(10 100% 60%); }
+  {/raw)</style>
 </HogToast.ToastGroup>
 ```
 
