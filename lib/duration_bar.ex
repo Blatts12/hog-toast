@@ -2,7 +2,7 @@ defmodule HogToast.DurationBar do
   @moduledoc """
   Hologram component that renders the animated countdown bar for a toast.
 
-  Rendered as a visually decorative `<div>` (`aria-hidden="true"`).  Its width
+  Rendered as a visually decorative `<div>` (`aria-hidden="true"`). Its width
   is driven by the `requestAnimationFrame` loop started in `HogToast.Toast`.
   """
 

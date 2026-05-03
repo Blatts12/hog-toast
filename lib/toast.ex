@@ -2,7 +2,7 @@ defmodule HogToast.Toast do
   @moduledoc """
   Hologram component that renders a single toast notification.
 
-  Handles the full lifecycle of an individual toast: initialising resolved
+  Handles the full lifecycle of an individual toast: initializing resolved
   styles, scheduling the countdown animation via `setup_toast_duration`, and
   managing pause/resume state when the user hovers over the toast.
 
