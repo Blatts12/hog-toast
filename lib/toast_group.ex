@@ -110,8 +110,8 @@ defmodule HogToast.ToastGroup do
   defp parse_toasts(toasts, {vertical, _}) do
     toasts =
       case vertical do
-        "top" -> toasts
-        "bottom" -> Enum.reverse(toasts)
+        "top" -> Enum.reverse(toasts)
+        "bottom" -> toasts
       end
 
     Enum.with_index(toasts)
