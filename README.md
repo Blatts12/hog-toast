@@ -21,10 +21,12 @@ end
 Place `HogToast.ToastGroup` in your template where toasts should appear:
 
 ```elixir
-<HogToast.ToastGroup name="main" />
+<HogToast.ToastGroup name="main" position="bottom-right" />
 ```
 
 The `name` uniquely identifies the group — use it when adding or removing toasts.
+
+The `position` prop controls where on the screen the group is anchored and which swipe directions trigger dismiss. Accepted values are `"top-left"`, `"top-center"`, `"top-right"`, `"bottom-left"`, `"bottom-center"`, and `"bottom-right"` (default `"bottom-right"`). The group applies `position: fixed` as an inline style, placing it at the corresponding viewport edge. Pass a `style` prop to add offset from the edge (e.g. `style="bottom:1.5rem;right:1.5rem;"`), or a `class` prop for layout utilities like z-index, width, and flex gap.
 
 ### 2. Wire up the helper module
 
@@ -120,9 +122,6 @@ Pass a config built with `Config.new!` to override classes for each element and 
 ```elixir
 defp toast_group_config do
   HogToast.Config.new!(%{
-    group: %{
-      class: "fixed bottom-2 right-6 z-50 flex flex-col-reverse gap-2"
-    },
     toast: %{
       class: [
         "w-sm relative ring-2 rounded overflow-hidden shadow",
@@ -147,17 +146,23 @@ defp toast_group_config do
 end
 ```
 
-Then pass it to the group:
+Then pass it to the group. Use the `position` prop to anchor the group and `style` or `class` for edge offset and layout:
 
 ```elixir
-<HogToast.ToastGroup name="main" config={toast_group_config()} />
+<HogToast.ToastGroup
+  name="main"
+  position="bottom-right"
+  style="bottom:0.5rem;right:1.5rem;"
+  class="z-50 flex flex-col-reverse gap-2 w-sm"
+  config={toast_group_config()}
+/>
 ```
 
-You can also use the `style` key anywhere a `class` key is accepted to pass inline CSS strings instead of class names:
+You can also use the `style` key on any toast sub-element to pass inline CSS instead of a class name:
 
 ```elixir
 HogToast.Config.new!(%{
-  group: %{style: "position: fixed; bottom: 0.5rem; right: 1.5rem;"}
+  toast: %{style: "border-radius: 0.5rem;"}
 })
 ```
 
@@ -166,12 +171,9 @@ HogToast.Config.new!(%{
 `HogToast.ToastGroup` exposes a slot rendered inside the group container. You can use it to inject a `<style>` block that targets the default BEM class names, keeping toast styles co-located with the group and avoiding global stylesheet pollution:
 
 ```elixir
-<HogToast.ToastGroup name="main">
+<HogToast.ToastGroup name="main" position="bottom-right" style="bottom:0.5rem;right:1.5rem;">
   <style scope>{%raw}
     .hog-toast-group {
-      position: fixed;
-      bottom: 0.5rem;
-      right: 1.5rem;
       z-index: 50;
       display: flex;
       flex-direction: column-reverse;
@@ -250,9 +252,6 @@ Enable it via `Config.new!`:
 defp toast_group_config do
   HogToast.Config.new!(%{
     stack_type: :collapse,
-    group: %{
-      class: "fixed bottom-6 right-6 z-50 w-sm"
-    },
     toast: %{
       class: "w-sm relative ring-2 rounded overflow-hidden shadow",
       title: %{class: "text-md font-semibold px-2 py-1"},
@@ -303,7 +302,7 @@ Then add the collapse CSS. The group exposes two CSS custom properties:
 Or using the slot to keep styles co-located with the group:
 
 ```elixir
-<HogToast.ToastGroup name="main" config={toast_group_config()}>
+<HogToast.ToastGroup name="main" position="bottom-right" style="bottom:1.5rem;right:1.5rem;" class="z-50 w-sm" config={toast_group_config()}>
   <style scope>{%raw}
     [data-stack="collapse"] {
       overflow: hidden;
@@ -336,12 +335,13 @@ The `80px` default for `max-height` is a reasonable starting point for a single 
 
 ## Swipe to dismiss
 
-On touch devices, toasts can be swiped horizontally to dismiss. This works out of the box with no configuration needed.
+Toasts can be swiped to dismiss using touch or mouse drag (pointer events). This works out of the box with no configuration needed.
 
-- Swiping left or right translates the toast and fades it out as you drag.
-- Releasing past **40% of the toast width** triggers dismiss — the toast flies off in the swipe direction and `hog_remove_toast` is dispatched.
-- Releasing below the threshold snaps the toast back into place.
-- Vertical scrolling is never interrupted — the gesture is ignored when the finger moves more vertically than horizontally.
+- The dismiss direction depends on the group's `position`. A `"bottom-right"` toast can be swiped right or down; a `"top-center"` toast can only be swiped up; a `"bottom-left"` toast can be swiped left or down.
+- Swiping in the "out" direction translates the toast. Swiping the other way is elastic — it resists with roughly 10% translation, capped at 16px.
+- Releasing past **120px** from the start point triggers dismiss — the toast flies off screen and `hog_remove_toast` is dispatched.
+- Releasing below the threshold snaps the toast back with a spring animation.
+- `touch-action: none` is set on each toast element, so native scrolling is suppressed while a pointer is held on a toast. The swipe axis is locked after a 5px movement in any direction.
 
 ## Accessibility
 
