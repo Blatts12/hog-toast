@@ -28,9 +28,16 @@ defmodule HogToast.Toast do
   alias HogToast.Icons
   alias HogToast.ToastGroup
 
+  @swipe_in_max 16
+  @swipe_out_threshold 120
+  @swipe_out_max 360
+  @swipe_return_step 3
+
+  prop :group_name, :string
+  prop :position, :any
+
   prop :index, :integer, default: nil
   prop :toast, :map
-  prop :group_name, :string
   prop :config, :map
 
   def init(props, component) do
@@ -41,7 +48,11 @@ defmodule HogToast.Toast do
       |> put_state(:styles, styles)
       |> put_state(:toast, props.toast)
       |> put_state(:group_name, props.group_name)
+      |> put_state(:position, props.position)
       |> put_state(:pause_duration_left, nil)
+      |> put_state(:pointer_start, {nil, nil})
+      |> put_state(:swipe_direction, nil)
+      |> put_state(:swipe_offset, nil)
 
     if duration?(props.toast) do
       put_action(component, :setup_toast_duration)
@@ -104,19 +115,100 @@ defmodule HogToast.Toast do
     |> put_action(:setup_toast_duration)
   end
 
+  def action(:swipe_start, event, component) do
+    JS.call(event, :preventDefault, [])
+
+    blank = JS.new(:Image, [])
+    data_transfer = JS.get(event, :dataTransfer)
+    JS.call(data_transfer, :setDragImage, [blank, 0, 0])
+
+    x = JS.get(event, :clientX)
+    y = JS.get(event, :clientY)
+
+    put_state(component, :pointer_start, {x, y})
+  end
+
+  def action(:swipe_end, _params, component) do
+    component
+    |> put_state(:pointer_start, {nil, nil})
+    |> put_state(:swipe_direction, nil)
+    |> put_state(:swipe_offset, nil)
+  end
+
+  def action(:swipe, event, component) do
+    JS.call(event, :preventDefault, [])
+
+    {x, y} = component.state.pointer_start
+    dx = JS.get(event, :clientX) - x
+    dy = JS.get(event, :clientY) - y
+
+    {direction, component} =
+      case component.state.swipe_direction do
+        nil ->
+          direction = if abs(dx) > abs(dy), do: "x", else: "y"
+          {direction, put_state(component, :swipe_direction, direction)}
+
+        direction ->
+          {direction, component}
+      end
+
+    out_dirs = position_to_out_dirs(component.state.position)
+
+    if direction == "x" do
+      put_state(component, :swipe_offset, damp_offset(dx, "x", out_dirs))
+    else
+      put_state(component, :swipe_offset, damp_offset(dy, "y", out_dirs))
+    end
+  end
+
+  def action(:swipe_return, _params, component) do
+    swipe_offset = component.state.swipe_offset
+
+    new_offset =
+      if swipe_offset <= 0 do
+        min(0, swipe_offset + @swipe_return_step)
+      else
+        max(0, swipe_offset - @swipe_return_step)
+      end
+
+    if new_offset == 0 do
+      put_action(component, :swipe_end)
+    else
+      group_name = component.state.group_name
+      toast_id = component.state.toast.id
+
+      JS.exec("""
+      requestAnimationFrame(() => {
+        Hologram.dispatchAction('swipe_return', '#{cid(group_name, toast_id)}');
+      })
+      """)
+
+      put_state(component, :swipe_offset, new_offset)
+    end
+  end
+
   @impl true
   def template do
     ~HOLO"""
     <div
       id={cid(@group_name, @toast.id)}
       class={@styles[:toast][:class]}
-      style={Helpers.parse_styles(["--idx:#{@index}", @styles[:toast][:style]])}
+      style={Helpers.parse_styles([
+        "--idx:#{@index}",
+        swipe_style(@swipe_direction, @swipe_offset),
+        @styles[:toast][:style]])
+      }
       role={toast_role(@config, @toast.kind)}
       data-idx={@index}
       data-paused={is_integer(@pause_duration_left) and @pause_duration_left > 0}
       onmouseenter={"Hologram.dispatchAction('pause', '#{cid(@group_name, @toast.id)}')"}
       onmouseleave={"Hologram.dispatchAction('resume', '#{cid(@group_name, @toast.id)}')"}
+      draggable="true"
+      ondragstart={"Hologram.dispatchAction('swipe_start', '#{cid(@group_name, @toast.id)}', event)"}
+      ondragend={"Hologram.dispatchAction('swipe_return', '#{cid(@group_name, @toast.id)}')"}
+      ondrag={"Hologram.dispatchAction('swipe', '#{cid(@group_name, @toast.id)}', event)"}
     >
+
       <button
         $click={action: :hog_remove_toast, target: ToastGroup.cid(@group_name), params: %{id: @toast.id}}
         class={@styles[:close_button][:class]}
@@ -132,7 +224,7 @@ defmodule HogToast.Toast do
       <p
         class={@styles[:title][:class]}
         style={@styles[:title][:style]}
-      >{@toast.title}</p>
+      >{@toast.title} - {@swipe_direction}, {@swipe_offset}</p>
       <p
         class={@styles[:body][:class]}
         style={@styles[:body][:style]}
@@ -168,6 +260,35 @@ defmodule HogToast.Toast do
     kind = Helpers.get_proper_kind(kinds, kind)
 
     get_in(kinds, [kind, :role]) || "status"
+  end
+
+  defp swipe_style("y", offset), do: "transform:translateY(#{offset}px)"
+  defp swipe_style("x", offset), do: "transform:translateX(#{offset}px)"
+  defp swipe_style(_, _), do: nil
+
+  defp position_to_out_dirs({"top", "center"}), do: ["up"]
+  defp position_to_out_dirs({"top", horizontal}), do: ["up", horizontal]
+  defp position_to_out_dirs({"bottom", "center"}), do: ["down"]
+  defp position_to_out_dirs({"bottom", horizontal}), do: ["down", horizontal]
+
+  defp damp_offset(offset, axis, out_dirs) do
+    dir =
+      case axis do
+        "y" -> if offset <= 0, do: "up", else: "down"
+        "x" -> if offset <= 0, do: "left", else: "right"
+      end
+
+    if dir in out_dirs do
+      if offset <= 0,
+        do: max(-@swipe_out_max, offset),
+        else: min(@swipe_out_max, offset)
+    else
+      offset = offset * 0.1
+
+      if offset <= 0,
+        do: max(-@swipe_in_max, offset),
+        else: min(@swipe_in_max, offset)
+    end
   end
 
   @type toast_id() :: String.t()

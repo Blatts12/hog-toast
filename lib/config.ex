@@ -21,6 +21,7 @@ defmodule HogToast.Config do
   alias HogToast.Helpers
 
   defstruct group: %{class: "hog-toast-group"},
+            stack_type: :stack,
             toast: %{
               class: "hog-toast",
               title: %{class: "hog-toast-title"},
@@ -71,10 +72,13 @@ defmodule HogToast.Config do
            required(atom()) => toast()
          }
 
+  @type stack_type() :: :stack | :collapse
+
   @type t() :: %{
           required(:group) => group(),
           required(:toast) => toast(),
-          required(:kinds) => kinds()
+          required(:kinds) => kinds(),
+          required(:stack_type) => stack_type()
         }
 
   @spec new!(attrs :: map() | t()) :: t()
