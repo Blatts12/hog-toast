@@ -198,6 +198,7 @@ defmodule HogToast.Toast do
 
       <button
         $click={action: :hog_remove_toast, target: ToastGroup.cid(@group_name), params: %{id: @toast.id}}
+        onpointerdown="event.stopPropagation()"
         class={@styles[:close_button][:class]}
         style={@styles[:close_button][:style]}
         aria-label={close_button_label(@toast)}
