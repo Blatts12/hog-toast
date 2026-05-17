@@ -20,6 +20,7 @@ defmodule HogToast.ToastGroup do
   """
 
   use Hologram.Component
+  use Hologram.JS
 
   alias HogToast.Config
   alias HogToast.Helpers
@@ -31,7 +32,7 @@ defmodule HogToast.ToastGroup do
   prop :name, :string
   prop :position, :string, default: @default_position
 
-  prop :class, :string, default: nil
+  prop :class, [:string, :list], default: nil
   prop :style, :string, default: nil
 
   prop :config, :map, default: %Config{}
@@ -61,18 +62,42 @@ defmodule HogToast.ToastGroup do
     put_state(component, :toasts, new_toasts)
   end
 
+  def action(:pause, _, component) do
+    js =
+      Enum.map_join(component.state.toasts, ";", fn %{id: toast_id} ->
+        "Hologram.dispatchAction('pause', '#{Toast.cid(component.state.name, toast_id)}')"
+      end)
+
+    JS.exec(js)
+
+    component
+  end
+
+  def action(:resume, _, component) do
+    js =
+      Enum.map_join(component.state.toasts, ";", fn %{id: toast_id} ->
+        "Hologram.dispatchAction('resume', '#{Toast.cid(component.state.name, toast_id)}')"
+      end)
+
+    JS.exec(js)
+
+    component
+  end
+
   @impl true
   def template do
     ~HOLO"""
     <div
       id={cid(@name)}
-      class={@class}
+      class={Helpers.parse_styles([@class])}
       style={Helpers.parse_styles([position_to_style(@position), @style])}
       role="region"
       aria-label="Notifications"
       aria-live="polite"
       aria-atomic="false"
       aria-relevant="additions"
+      onmouseenter={"Hologram.dispatchAction('pause', '#{cid(@name)}')"}
+      onmouseleave={"Hologram.dispatchAction('resume', '#{cid(@name)}')"}
     >
       <slot />
       {%for {toast, index} <- parse_toasts(@toasts, @position)}

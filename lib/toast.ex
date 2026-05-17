@@ -54,6 +54,9 @@ defmodule HogToast.Toast do
     |> put_state(:swipe_start_x, nil)
     |> put_state(:swipe_start_y, nil)
     |> put_state(:swipe_direction, nil)
+    |> put_state(:transition, nil)
+    |> put_state(:transform, nil)
+    |> put_state(:opacity, nil)
     |> put_action(:setup_toast)
   end
 
@@ -66,10 +69,8 @@ defmodule HogToast.Toast do
     if component.state.dismissed do
       component
     else
-      toast_cid = cid(component.state.group_name, component.state.toast.id)
-      JS.exec(~s|document.getElementById("#{toast_cid}").style.transition = "none";|)
-
       component
+      |> put_state(:transition, "none")
       |> put_state(:swiping?, true)
       |> put_state(:swipe_start_x, params.event.client_x)
       |> put_state(:swipe_start_y, params.event.client_y)
@@ -93,30 +94,22 @@ defmodule HogToast.Toast do
         offset = damp_offset(raw, direction, out_dirs)
         transform = if direction == "x", do: "translateX(#{offset}px)", else: "translateY(#{offset}px)"
 
-        toast_id = component.state.toast.id
-        toast_cid = cid(component.state.group_name, toast_id)
-        JS.exec(~s|document.getElementById("#{toast_cid}").style.transform = "#{transform}";|)
-
-        component = put_state(component, :swipe_direction, direction)
+        component =
+          component
+          |> put_state(:swipe_direction, direction)
+          |> put_state(:transform, transform)
 
         if swipe_dir in out_dirs and abs(raw) >= @swipe_out_threshold do
           sign = if raw >= 0, do: 1, else: -1
           out = if direction == "x", do: "translateX(#{sign * 500}px)", else: "translateY(#{sign * 500}px)"
-          group_cid = ToastGroup.cid(component.state.group_name)
-
-          JS.exec("""
-          const el = document.getElementById("#{toast_cid}");
-          el.style.transition = "transform 0.25s ease-in, opacity 0.2s ease-in";
-          el.style.transform = "#{out}";
-          el.style.opacity = "0";
-          setTimeout(() => {
-            Hologram.dispatchAction("hog_remove_toast", "#{group_cid}", {id: "#{toast_id}"});
-          }, 200);
-          """)
 
           component
+          |> put_state(:transition, "transform 0.25s ease-in, opacity 0.2s ease-in")
+          |> put_state(:transform, out)
+          |> put_state(:opacity, "0")
           |> put_state(:swiping?, false)
           |> put_state(:dismissed, true)
+          |> put_action(name: :remove, delay: 200)
         else
           component
         end
@@ -127,18 +120,10 @@ defmodule HogToast.Toast do
   end
 
   def action(:swipe_end, _params, component) do
-    if component.state.swiping? do
-      toast_cid = cid(component.state.group_name, component.state.toast.id)
-
-      JS.exec("""
-      const el = document.getElementById("#{toast_cid}");
-      if (el && !el.dataset.dismissed) {
-        el.style.transition = "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
-        el.style.transform = "";
-      }
-      """)
-
+    if component.state.swiping? and not component.state.dismissed do
       component
+      |> put_state(:transition, "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)")
+      |> put_state(:transform, nil)
       |> put_state(:swiping?, false)
       |> put_state(:swipe_start_x, nil)
       |> put_state(:swipe_start_y, nil)
@@ -173,7 +158,15 @@ defmodule HogToast.Toast do
   end
 
   def action(:remove, _, component) do
-    put_state(component, :dismissed, true)
+    group_cid = ToastGroup.cid(component.state.group_name)
+
+    component
+    |> put_state(:dismissed, true)
+    |> put_action(
+      name: :hog_remove_toast,
+      target: group_cid,
+      params: %{id: component.state.toast.id}
+    )
   end
 
   @impl true
@@ -182,26 +175,28 @@ defmodule HogToast.Toast do
     <div
       id={cid(@group_name, @toast.id)}
       class={@styles[:toast][:class]}
-      style={Helpers.parse_styles(["--idx:#{@index};touch-action:none", @styles[:toast][:style]])}
+      style={Helpers.parse_styles([
+        "--idx:#{@index};touch-action:none",
+        if(@transition, do: "transition:#{@transition}"),
+        if(@transform, do: "transform:#{@transform}"),
+        if(@opacity, do: "opacity:#{@opacity}"),
+        @styles[:toast][:style]
+      ])}
       role={toast_role(@config, @toast.kind)}
-      data-idx={@index}
       data-paused={is_integer(@pause_duration_left) and @pause_duration_left > 0}
       data-dismissed={@dismissed}
-      onmouseenter={"Hologram.dispatchAction('pause', '#{cid(@group_name, @toast.id)}')"}
-      onmouseleave={"Hologram.dispatchAction('resume', '#{cid(@group_name, @toast.id)}')"}
       onpointerdown="this.setPointerCapture(event.pointerId)"
       $pointer_down="swipe_start"
       $pointer_move="swipe_move"
       $pointer_up="swipe_end"
       $pointer_cancel="swipe_end"
     >
-
       <button
-        $click={action: :hog_remove_toast, target: ToastGroup.cid(@group_name), params: %{id: @toast.id}}
-        onpointerdown="event.stopPropagation()"
         class={@styles[:close_button][:class]}
         style={@styles[:close_button][:style]}
         aria-label={close_button_label(@toast)}
+        onpointerdown="event.stopPropagation()"
+        $click="remove"
       >
         <Icons.Close
           class={@styles[:icon][:class]}
@@ -315,9 +310,9 @@ defmodule HogToast.Toast do
   defp position_to_out_dirs("bottom", "center"), do: ["down"]
   defp position_to_out_dirs("bottom", h), do: ["down", h]
 
-  def diff(nil, _), do: 0
-  def diff(_, nil), do: 0
-  def diff(a, b), do: a - b
+  defp diff(nil, _), do: 0
+  defp diff(_, nil), do: 0
+  defp diff(a, b), do: a - b
 
   @type toast_id() :: String.t()
   @type duration() :: non_neg_integer() | nil

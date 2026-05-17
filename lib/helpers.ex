@@ -60,7 +60,7 @@ defmodule HogToast.Helpers do
   def get_proper_kind(kinds, kind) do
     if Map.has_key?(kinds, kind),
       do: kind,
-      else: kinds |> Map.keys() |> List.first()
+      else: :default
   end
 
   defp parse_classes(classes) when is_binary(classes) do
