@@ -48,15 +48,11 @@ defmodule HogToast.Toast do
     |> put_state(:group_name, props.group_name)
     |> put_state(:position, props.position)
     |> put_state(:index, props.index)
-    |> put_state(:pause_duration_left, nil)
     |> put_state(:dismissed, false)
     |> put_state(:swiping?, false)
     |> put_state(:swipe_start_x, nil)
     |> put_state(:swipe_start_y, nil)
     |> put_state(:swipe_direction, nil)
-    |> put_state(:transition, nil)
-    |> put_state(:transform, nil)
-    |> put_state(:opacity, nil)
     |> put_action(:setup_toast)
   end
 
@@ -70,7 +66,7 @@ defmodule HogToast.Toast do
       component
     else
       component
-      |> put_state(:transition, "none")
+      |> update_style(:transition, "none")
       |> put_state(:swiping?, true)
       |> put_state(:swipe_start_x, params.event.client_x)
       |> put_state(:swipe_start_y, params.event.client_y)
@@ -97,16 +93,16 @@ defmodule HogToast.Toast do
         component =
           component
           |> put_state(:swipe_direction, direction)
-          |> put_state(:transform, transform)
+          |> update_style(:transform, transform)
 
         if swipe_dir in out_dirs and abs(raw) >= @swipe_out_threshold do
           sign = if raw >= 0, do: 1, else: -1
           out = if direction == "x", do: "translateX(#{sign * 500}px)", else: "translateY(#{sign * 500}px)"
 
           component
-          |> put_state(:transition, "transform 0.25s ease-in, opacity 0.2s ease-in")
-          |> put_state(:transform, out)
-          |> put_state(:opacity, "0")
+          |> update_style(:transition, "transform 0.25s ease-in, opacity 0.2s ease-in")
+          |> update_style(:transform, out)
+          |> update_style(:opacity, "0")
           |> put_state(:swiping?, false)
           |> put_state(:dismissed, true)
           |> put_action(name: :remove, delay: 200)
@@ -122,8 +118,8 @@ defmodule HogToast.Toast do
   def action(:swipe_end, _params, component) do
     if component.state.swiping? and not component.state.dismissed do
       component
-      |> put_state(:transition, "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)")
-      |> put_state(:transform, nil)
+      |> update_style(:transition, "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)")
+      |> update_style(:transform, nil)
       |> put_state(:swiping?, false)
       |> put_state(:swipe_start_x, nil)
       |> put_state(:swipe_start_y, nil)
@@ -131,30 +127,6 @@ defmodule HogToast.Toast do
     else
       component
     end
-  end
-
-  def action(:pause, _, component) do
-    now = now_unix()
-    duration_left = component.state.toast.start + component.state.toast.duration - now
-
-    put_state(component, :pause_duration_left, duration_left)
-  end
-
-  def action(:resume, _, component) do
-    toast = component.state.toast
-    duration_left = component.state.pause_duration_left
-    start = now_unix() - diff(toast.duration, duration_left)
-
-    toast = Map.put(toast, :start, start)
-
-    component =
-      component
-      |> put_state(:pause_duration_left, nil)
-      |> put_state(:toast, toast)
-
-    setup_toast_duration(component)
-
-    component
   end
 
   def action(:remove, _, component) do
@@ -177,13 +149,11 @@ defmodule HogToast.Toast do
       class={@styles[:toast][:class]}
       style={Helpers.parse_styles([
         "--idx:#{@index};touch-action:none",
-        if(@transition, do: "transition:#{@transition}"),
-        if(@transform, do: "transform:#{@transform}"),
-        if(@opacity, do: "opacity:#{@opacity}"),
+        @toast[:style],
         @styles[:toast][:style]
       ])}
       role={toast_role(@config, @toast.kind)}
-      data-paused={is_integer(@pause_duration_left) and @pause_duration_left > 0}
+      data-paused={is_integer(@toast.pause_duration_left) and @toast.pause_duration_left > 0}
       data-dismissed={@dismissed}
       onpointerdown="this.setPointerCapture(event.pointerId)"
       $pointer_down="swipe_start"
@@ -213,6 +183,10 @@ defmodule HogToast.Toast do
         style={@styles[:body][:style]}
       >{@toast.body}</p>
 
+      <p style="font-size: 0.6em">start: {@toast.start}</p>
+      <p style="font-size: 0.6em">duration: {@toast.duration}</p>
+      <p style="font-size: 0.6em">pause_duration_left: {@toast.pause_duration_left}</p>
+
       <DurationBar
         group_name={@group_name}
         toast={@toast}
@@ -239,7 +213,14 @@ defmodule HogToast.Toast do
 
       function tick() {
         const toast = document.getElementById("#{toast_cid}");
-        if (!toast || toast.dataset.paused || toast.dataset.dismissed) return;
+        if (!toast) return;
+
+        if (toast.dataset.paused) {
+          requestAnimationFrame(tick);
+          return;
+        }
+
+        if (toast.dataset.dismissed) return;
 
         const bar = document.getElementById("#{bar_id}");
         const elapsed = Date.now() - #{toast.start};
@@ -310,15 +291,12 @@ defmodule HogToast.Toast do
   defp position_to_out_dirs("bottom", "center"), do: ["down"]
   defp position_to_out_dirs("bottom", h), do: ["down", h]
 
-  defp diff(nil, _), do: 0
-  defp diff(_, nil), do: 0
-  defp diff(a, b), do: a - b
-
   @type toast_id() :: String.t()
   @type duration() :: non_neg_integer() | nil
   @type kind() :: atom()
   @type title() :: String.t()
   @type body() :: String.t()
+  @type styles() :: map()
   @typedoc "Unix timestamp in milliseconds"
   @type start() :: pos_integer()
 
@@ -328,7 +306,9 @@ defmodule HogToast.Toast do
           optional(:title) => title(),
           optional(:body) => body(),
           optional(:duration) => duration(),
-          required(:start) => start()
+          required(:start) => start(),
+          optional(:pause_duration_left) => duration(),
+          optional(:styles) => styles()
         }
 
   @spec create_toast(
@@ -344,10 +324,24 @@ defmodule HogToast.Toast do
       title: title,
       body: body,
       duration: duration,
-      start: now_unix()
+      start: now_unix(),
+      pause_duration_left: nil,
+      styles: %{
+        transition: nil,
+        transform: nil,
+        opacity: nil
+      }
     }
   end
 
   defp generate_toast_id, do: to_string(System.unique_integer())
   defp now_unix, do: DateTime.to_unix(DateTime.utc_now(), :millisecond)
+
+  defp update_style(component, key, value) do
+    toast = component.state.toast
+    styles = Map.put(toast.styles, key, value)
+    toast = Map.put(toast, :styles, styles)
+
+    put_state(component, :toast, toast)
+  end
 end

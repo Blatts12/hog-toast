@@ -84,15 +84,38 @@ defmodule HogToast.Helpers do
 
   defp parse_classes(_), do: nil
 
-  @spec parse_styles([term()]) :: String.t() | nil
-  def parse_styles(styles) do
+  @spec parse_styles(term()) :: String.t() | nil
+  def parse_styles([]), do: nil
+  def parse_styles(""), do: nil
+
+  def parse_styles(style_map) when is_map(style_map) do
+    style_map
+    |> Enum.reject(fn
+      {_key, nil} -> true
+      {_key, ""} -> true
+      _ -> false
+    end)
+    |> Enum.map_join(";", fn {key, value} ->
+      "#{key}:#{value}"
+    end)
+    |> case do
+      [] -> nil
+      styles -> styles
+    end
+  end
+
+  def parse_styles([_ | _] = styles) do
     styles
     |> Enum.reject(&falsy?/1)
+    |> Enum.map(&parse_styles/1)
+    |> Enum.reject(&is_nil/1)
     |> case do
       [] -> nil
       styles -> Enum.join(styles, ";")
     end
   end
+
+  def parse_styles(style), do: style
 
   @spec falsy?(term()) :: boolean()
   def falsy?(nil), do: true

@@ -63,25 +63,37 @@ defmodule HogToast.ToastGroup do
   end
 
   def action(:pause, _, component) do
-    js =
-      Enum.map_join(component.state.toasts, ";", fn %{id: toast_id} ->
-        "Hologram.dispatchAction('pause', '#{Toast.cid(component.state.name, toast_id)}')"
+    now = DateTime.to_unix(DateTime.utc_now(), :millisecond)
+    toasts = component.state.toasts
+
+    toasts =
+      Enum.map(toasts, fn toast ->
+        duration_left = toast.start + toast.duration - now
+        Map.put(toast, :pause_duration_left, duration_left)
       end)
 
-    JS.exec(js)
+    JS.call(:console, :warn, ["pause", toasts])
 
-    component
+    put_state(component, :toasts, toasts)
   end
 
   def action(:resume, _, component) do
-    js =
-      Enum.map_join(component.state.toasts, ";", fn %{id: toast_id} ->
-        "Hologram.dispatchAction('resume', '#{Toast.cid(component.state.name, toast_id)}')"
+    now = DateTime.to_unix(DateTime.utc_now(), :millisecond)
+    toasts = component.state.toasts
+
+    toasts =
+      Enum.map(toasts, fn toast ->
+        start = now - diff(toast.duration, toast.pause_duration_left)
+
+        Map.merge(toast, %{
+          start: start,
+          pause_duration_left: nil
+        })
       end)
 
-    JS.exec(js)
+    JS.call(:console, :warn, ["resume", toasts])
 
-    component
+    put_state(component, :toasts, toasts)
   end
 
   @impl true
@@ -157,4 +169,8 @@ defmodule HogToast.ToastGroup do
       "right" -> "#{style}right:0"
     end
   end
+
+  defp diff(nil, _), do: 0
+  defp diff(_, nil), do: 0
+  defp diff(a, b), do: a - b
 end
