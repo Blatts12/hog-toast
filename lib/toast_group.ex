@@ -23,8 +23,10 @@ defmodule HogToast.ToastGroup do
   use Hologram.JS
 
   alias HogToast.Config
+  alias HogToast.DurationBar
   alias HogToast.Helpers
   alias HogToast.Toast
+  alias HogToast.Toast.Swipe
 
   @positions ~w(top-left top-center top-right bottom-left bottom-center bottom-right)
   @default_position "bottom-right"
@@ -38,6 +40,7 @@ defmodule HogToast.ToastGroup do
   prop :config, :map, default: %Config{}
   prop :toasts, :list, default: []
 
+  @impl true
   def init(props, component, server) do
     position = parse_position(props.position)
     [vertical, horizontal] = String.split(position, "-")
@@ -52,6 +55,7 @@ defmodule HogToast.ToastGroup do
     {component, server}
   end
 
+  @impl true
   def action(:hog_add_toast, %{toast: toast}, component) do
     new_toasts = [toast | component.state.toasts]
     put_state(component, :toasts, new_toasts)
@@ -62,6 +66,17 @@ defmodule HogToast.ToastGroup do
     put_state(component, :toasts, new_toasts)
   end
 
+  def action(:init_toast, %{id: toast_id}, component) do
+    group_name = component.state.name
+    toast = Enum.find(component.state.toasts, &(&1.id == toast_id))
+
+    if toast do
+      DurationBar.setup(group_name, toast)
+    end
+
+    component
+  end
+
   def action(:pause, _, component) do
     now = DateTime.to_unix(DateTime.utc_now(), :millisecond)
     toasts = component.state.toasts
@@ -69,31 +84,40 @@ defmodule HogToast.ToastGroup do
     toasts =
       Enum.map(toasts, fn toast ->
         duration_left = toast.start + toast.duration - now
-        Map.put(toast, :pause_duration_left, duration_left)
+        put_in(toast, [:state, :pause_duration_left], duration_left)
       end)
-
-    JS.call(:console, :warn, ["pause", toasts])
 
     put_state(component, :toasts, toasts)
   end
 
   def action(:resume, _, component) do
     now = DateTime.to_unix(DateTime.utc_now(), :millisecond)
-    toasts = component.state.toasts
+    group_name = component.state.name
 
     toasts =
-      Enum.map(toasts, fn toast ->
-        start = now - diff(toast.duration, toast.pause_duration_left)
+      Enum.map(component.state.toasts, fn toast ->
+        pause_duration_left = get_in(toast, [:state, :pause_duration_left])
+        start = now - diff(toast.duration, pause_duration_left)
+        DurationBar.setup(group_name, toast)
 
-        Map.merge(toast, %{
-          start: start,
-          pause_duration_left: nil
-        })
+        toast
+        |> Map.put(:start, start)
+        |> put_in([:state, :pause_duration_left], nil)
       end)
 
-    JS.call(:console, :warn, ["resume", toasts])
-
     put_state(component, :toasts, toasts)
+  end
+
+  def action(:swipe_start, %{event: event, id: toast_id}, component) do
+    Swipe.swipe_start(component, toast_id, event)
+  end
+
+  def action(:swipe_move, %{event: event, id: toast_id}, component) do
+    Swipe.swipe_move(component, toast_id, event)
+  end
+
+  def action(:swipe_end, %{event: event, id: toast_id}, component) do
+    Swipe.swipe_end(component, toast_id, event)
   end
 
   @impl true

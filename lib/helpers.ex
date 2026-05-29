@@ -128,4 +128,11 @@ defmodule HogToast.Helpers do
 
   @spec truthy?(term()) :: boolean()
   def truthy?(term), do: not falsy?(term)
+
+  @spec find_and_replace(list :: list(), find_fn :: (term() -> boolean()), replacer :: term()) :: list()
+  def find_and_replace(list, find_fn, replacer) do
+    Enum.map(list, fn item ->
+      if find_fn.(item), do: replacer, else: item
+    end)
+  end
 end

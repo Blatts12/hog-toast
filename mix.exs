@@ -21,7 +21,7 @@ defmodule HogToast.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:hologram, "~> 0.8.3"},
+      {:hologram, "~> 0.9.0"},
 
       # dev
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
