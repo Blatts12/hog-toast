@@ -133,21 +133,6 @@ defmodule HogToast.Toast do
         style={@styles[:body][:style]}
       >{@toast.body}</p>
 
-      <div style="font-size: 0.75rem">
-        <p>pause_duration_left: {@toast.state.pause_duration_left}</p>
-        <p>dismissed?: {@toast.state.dismissed?}</p>
-        <p>swiping?: {@toast.state.swiping?}</p>
-        <p>swipe_start_x: {@toast.state.swipe_start_x}</p>
-        <p>swipe_start_y: {@toast.state.swipe_start_y}</p>
-        <p>swipe_direction: {@toast.state.swipe_direction}</p>
-      </div>
-
-      <div style="font-size: 0.75rem">
-        <p>transition: {@toast.styles.transition}</p>
-        <p>transform: {@toast.styles.transform}</p>
-        <p>opacity: {@toast.styles.opacity}</p>
-      </div>
-
       <DurationBar
         group_name={@group_name}
         toast={@toast}
